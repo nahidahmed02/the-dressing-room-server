@@ -19,6 +19,7 @@ async function run() {
     try {
         await client.connect();
         const itemCollection = client.db('theDressingRoom').collection('items');
+        const newItemCollection = client.db('theDressingRoom').collection('newitems');
 
         // to send all items
         app.get('/items', async (req, res) => {
@@ -26,7 +27,7 @@ async function run() {
             const cursor = itemCollection.find(query);
             const items = await cursor.toArray();
             res.send(items);
-        })
+        });
 
         // to send single item
         app.get('/items/:id', async (req, res) => {
@@ -34,9 +35,9 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const item = await itemCollection.findOne(query);
             res.send(item);
-        })
+        });
 
-        // to add an item
+        // to add items
         app.post('/item', async (req, res) => {
             const newItem = req.body;
             const result = await itemCollection.insertOne(newItem);
@@ -49,6 +50,17 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const result = await itemCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // ---------- NEW ITEMS ADDED BY USER ----------
+
+        // to send items added by user
+        app.get('/myitems', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const cursor = itemCollection.find(query);
+            const newItems = await cursor.toArray();
+            res.send(newItems);
         });
     }
     finally {
