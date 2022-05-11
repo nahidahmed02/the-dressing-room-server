@@ -4,11 +4,29 @@ const port = process.env.PORT || 5000;
 const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
 
 
 // middleware
 app.use(cors());
 app.use(express.json());
+
+
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'Unauthorized access' });
+    }
+    const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden access' });
+        }
+        req.decoded = decoded;
+        next();
+    })
+}
 
 
 
@@ -19,6 +37,15 @@ async function run() {
     try {
         await client.connect();
         const itemCollection = client.db('theDressingRoom').collection('items');
+
+        // AUTH
+        app.post('/login', async (req, res) => {
+            const user = req.body;
+            const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+                expiresIn: '2d'
+            });
+            res.send({ accessToken });
+        })
 
         // to send all items
         app.get('/items', async (req, res) => {
@@ -69,12 +96,18 @@ async function run() {
         // ---------- NEW ITEMS ADDED BY USER ----------
 
         // to send items added by user
-        app.get('/myitems', async (req, res) => {
+        app.get('/myitems', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
             const email = req.query.email;
-            const query = { email: email };
-            const cursor = itemCollection.find(query);
-            const newItems = await cursor.toArray();
-            res.send(newItems);
+            if (email === decodedEmail) {
+                const query = { email: email };
+                const cursor = itemCollection.find(query);
+                const newItems = await cursor.toArray();
+                res.send(newItems);
+            }
+            else {
+                res.status(403).send({ message: 'Forbidden access' });
+            }
         });
     }
     finally {
