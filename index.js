@@ -19,7 +19,6 @@ async function run() {
     try {
         await client.connect();
         const itemCollection = client.db('theDressingRoom').collection('items');
-        const newItemCollection = client.db('theDressingRoom').collection('newitems');
 
         // to send all items
         app.get('/items', async (req, res) => {
@@ -49,6 +48,21 @@ async function run() {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const result = await itemCollection.deleteOne(query);
+            res.send(result);
+        });
+
+        // update the quantity of item
+        app.put('/items/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedItem = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: {
+                    quantity: updatedItem.quantity
+                }
+            };
+            const result = await itemCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
         });
 
